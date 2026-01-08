@@ -1,0 +1,33 @@
+# MEXC Spread Monitor v3.2 + Funding Rate Filter
+
+telegram:
+  bot_token: "8237716329:AAFRfIsxIpPAFTqWzDu66Pw4kFcyFINkGms"
+  chat_id: "-1003240346405"  # ID канала
+  message_thread_id: 45      # ID топика/темы
+
+spread:
+  min_threshold: 10.0          # Минимальный спред (%)
+  min_volume_usdt: 500000      # Минимальный объём $500K
+  max_funding_rate: 0.5        # Максимальный funding rate (%) - выше = отклоняем
+  min_change_percent: 5.0      # Изменение для повторного уведомления
+  min_cooldown_minutes: 3
+  max_cooldown_minutes: 30
+
+monitoring:
+  scan_interval_seconds: 10
+
+exchanges:
+  mexc:
+    enabled: true
+  binance:
+    enabled: true
+  bybit:
+    enabled: true
+  gate:
+    enabled: true
+  kucoin:
+    enabled: true
+  okx:
+    enabled: true
+  bingx:
+    enabled: true
