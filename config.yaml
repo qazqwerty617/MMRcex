@@ -6,12 +6,12 @@ telegram:
   message_thread_id: 45      # ID топика/темы
 
 spread:
-  min_threshold: 10.0          # Минимальный спред (%)
-  min_volume_usdt: 500000      # Минимальный объём $500K
-  max_funding_rate: 0.5        # Максимальный funding rate (%) - выше = отклоняем
-  min_change_percent: 5.0      # Изменение для повторного уведомления
+  min_threshold: 8.0           # Минимальный спред (%)
+  min_volume_usdt: 400000      # Минимальный объём $400K
+  max_funding_rate: 1.0        # Максимальный funding rate (%) - выше = отклоняем
+  min_change_percent: 3.0      # Изменение для повторного уведомления
   min_cooldown_minutes: 3
-  max_cooldown_minutes: 30
+  max_cooldown_minutes: 240    # 4 часа - периодические уведомления
 
 monitoring:
   scan_interval_seconds: 10

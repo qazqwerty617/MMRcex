@@ -111,8 +111,8 @@ class SpreadDetector:
                 
                 quality = self.calculate_quality(spread, min_vol)
                 
-                # Strict: require quality 40+
-                if quality < 40:
+                # Strict: require quality 30+
+                if quality < 30:
                     continue
                 
                 signal = "MEXC_LONG" if other_price > mexc_price else "MEXC_SHORT"
