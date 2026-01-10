@@ -30,6 +30,8 @@ class TelegramNotifier:
                 json=payload,
                 timeout=5
             )
+            if r.status_code != 200:
+                self.logger.error(f"Telegram Error {r.status_code}: {r.text}")
             return r.status_code == 200
         except Exception as e:
             self.logger.error(f"Send error: {e}")
