@@ -14,7 +14,7 @@ from exchanges.kucoin_client import KuCoinClient
 from exchanges.okx_client import OKXClient
 from exchanges.bingx_client import BingXClient
 
-from spread_detector import SpreadDetector
+from spread_detector import SpreadDetector, SpreadOpportunity
 from signal_generator import SmartSignalGenerator
 from telegram_notifier import TelegramNotifier
 from funding_checker import FundingRateChecker
