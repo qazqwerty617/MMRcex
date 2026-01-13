@@ -107,19 +107,24 @@ class KuCoinClient(BaseExchange):
         if not kucoin_symbol.endswith("M"):
             kucoin_symbol += "M"
             
-        url = f"{self.BASE_URL}/level1/depth"
+        # Endpoint: /api/v1/level1/depth is for spot or specific permissions?
+        # Use /api/v1/level2/depth20 (public) or /api/v1/level2/snapshot
+        # Let's try level2/depth20
+        url = f"{self.BASE_URL}/level2/depth20"
         params = {"symbol": kucoin_symbol}
         data = await self._get(url, params=params)
         
         if data and "data" in data:
             try:
                 d = data["data"]
-                best_bid = float(d.get("bestBidPrice", 0))
-                best_ask = float(d.get("bestAskPrice", 0))
+                bids = d.get("bids", [])
+                asks = d.get("asks", [])
                 
-                if best_bid > 0 and best_ask > 0:
+                if bids and asks:
+                    best_bid = float(bids[0][0])
+                    best_ask = float(asks[0][0])
                     return best_bid, best_ask
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, IndexError):
                 pass
         
         return None

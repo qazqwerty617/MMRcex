@@ -133,13 +133,17 @@ class SpreadMonitor:
             mexc_bid, mexc_ask = mexc_ob
 
             # 2. Get Other Orderbook
-            other_client = self.other.get(opp.other_exchange.split()[0]) # Fix potential naming issues
-            if not other_client:
-                # Fallback purely on name
-                for name, client in self.other.items():
-                    if name in opp.other_exchange:
-                        other_client = client
-                        break
+            # Special case for Binance as it is stored separately
+            if "Binance" in opp.other_exchange:
+                other_client = self.binance
+            else:
+                other_client = self.other.get(opp.other_exchange.split()[0]) # Fix potential naming issues
+                if not other_client:
+                    # Fallback purely on name
+                    for name, client in self.other.items():
+                        if name in opp.other_exchange:
+                            other_client = client
+                            break
             
             if not other_client:
                  self.logger.error(f"Client not found for {opp.other_exchange}")
