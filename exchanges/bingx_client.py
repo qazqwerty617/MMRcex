@@ -1,5 +1,5 @@
 """BingX Futures API client."""
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from .base_exchange import BaseExchange
 
 

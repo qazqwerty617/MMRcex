@@ -1,5 +1,5 @@
 """KuCoin Futures API client - Fixed version."""
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from .base_exchange import BaseExchange
 
 
