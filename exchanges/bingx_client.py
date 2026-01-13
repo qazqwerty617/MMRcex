@@ -59,3 +59,45 @@ class BingXClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        # BingX format: BTC-USDT
+        bingx_symbol = symbol.replace("USDT", "-USDT") if "-" not in symbol else symbol
+        
+        url = f"{self.BASE_URL}/swap/v2/quote/depth"
+        params = {"symbol": bingx_symbol, "limit": 5}
+        data = await self._get(url, params=params)
+        
+        # Responses logic can vary, commonly data['data']['bids']...
+        # Checking docs or assuming standard structure
+        if data and "data" in data:
+            try:
+                bids = data["data"].get("bids", [])
+                asks = data["data"].get("asks", [])
+                
+                if bids and asks:
+                    # BingX often sends [{"p": "...", "v": ...}] or [[p,v],...]
+                    # Let's inspect generic handling. Standard is usually [[price, vol]]
+                    # But if it returns dicts, we handle it.
+                    # Based on other APIs, list of lists is most common for depth.
+                    
+                    best_bid_raw = bids[0]
+                    best_ask_raw = asks[0]
+                    
+                    # Similar to Gate, safe check
+                    if isinstance(best_bid_raw, dict):
+                         best_bid = float(best_bid_raw.get("p", best_bid_raw.get("price", 0)))
+                    else:
+                         best_bid = float(best_bid_raw[0])
+
+                    if isinstance(best_ask_raw, dict):
+                         best_ask = float(best_ask_raw.get("p", best_ask_raw.get("price", 0)))
+                    else:
+                         best_ask = float(best_ask_raw[0])
+                    
+                    return best_bid, best_ask
+            except (ValueError, IndexError, KeyError):
+                pass
+        
+        return None

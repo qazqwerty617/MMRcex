@@ -58,3 +58,43 @@ class GateClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        # Gate format: BTC_USDT
+        gate_symbol = symbol.replace("USDT", "_USDT") if "_" not in symbol else symbol
+        
+        url = f"{self.BASE_URL}/futures/usdt/order_book"
+        params = {"contract": gate_symbol, "limit": 1}
+        data = await self._get(url, params=params)
+        
+        if data and "bids" in data and "asks" in data:
+            try:
+                bids = data.get("bids", [])
+                asks = data.get("asks", [])
+                
+                if bids and asks:
+                     # Gate bids: [{"p": "...", "s": ...}, ...] OR [[p, s], ...] depending on version
+                     # Most v4 docs say: {"p":"1.2", "s":100}
+                     # Let's handle both just in case, or look at typical response.
+                     # Docs for /futures/usdt/order_book say:
+                     # "bids": [ { "p": "1.2", "s": 100 }, ... ]
+                     
+                    best_bid_raw = bids[0]
+                    best_ask_raw = asks[0]
+                    
+                    if isinstance(best_bid_raw, dict):
+                        best_bid = float(best_bid_raw.get("p", 0))
+                    else:
+                         best_bid = float(best_bid_raw[0])
+                         
+                    if isinstance(best_ask_raw, dict):
+                        best_ask = float(best_ask_raw.get("p", 0))
+                    else:
+                        best_ask = float(best_ask_raw[0])
+                        
+                    return best_bid, best_ask
+            except (ValueError, IndexError, KeyError):
+                pass
+        
+        return None

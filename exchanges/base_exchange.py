@@ -69,3 +69,10 @@ class BaseExchange:
         Must be implemented by child classes.
         """
         raise NotImplementedError("get_all_tickers must be implemented by child class")
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[tuple[float, float]]:
+        """
+        Get best bid and best ask for validation.
+        Returns: (best_bid, best_ask) or None
+        """
+        raise NotImplementedError("get_orderbook_ticker must be implemented by child class")

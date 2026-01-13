@@ -70,3 +70,26 @@ class MEXCClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask from orderbook."""
+        # MEXC symbol format: BTC_USDT
+        mexc_symbol = symbol.replace("USDT", "_USDT") if "_" not in symbol else symbol
+        
+        # Limit 5 is enough for best bid/ask
+        url = f"{self.BASE_URL}/contract/depth/{mexc_symbol}"
+        data = await self._get(url, params={"limit": 5})
+        
+        if data and "data" in data:
+            try:
+                bids = data["data"].get("bids", [])
+                asks = data["data"].get("asks", [])
+                
+                if bids and asks:
+                    best_bid = float(bids[0][0])
+                    best_ask = float(asks[0][0])
+                    return best_bid, best_ask
+            except (ValueError, IndexError, KeyError):
+                pass
+        
+        return None

@@ -119,6 +119,85 @@ class SpreadMonitor:
         
         return mexc_data, other_data
     
+    async def validate_opportunity(self, opp: SpreadOpportunity) -> bool:
+        """
+        Validate opportunity using real order book data (Bids/Asks).
+        Returns True if valid, and updates opp.spread_percent with real spread.
+        """
+        try:
+            # 1. Get MEXC Orderbook
+            mexc_ob = await self.mexc.get_orderbook_ticker(opp.symbol)
+            if not mexc_ob:
+                self.logger.debug(f"{opp.symbol}: No MEXC orderbook")
+                return False
+            mexc_bid, mexc_ask = mexc_ob
+
+            # 2. Get Other Orderbook
+            other_client = self.other.get(opp.other_exchange.split()[0]) # Fix potential naming issues
+            if not other_client:
+                # Fallback purely on name
+                for name, client in self.other.items():
+                    if name in opp.other_exchange:
+                        other_client = client
+                        break
+            
+            if not other_client:
+                 self.logger.error(f"Client not found for {opp.other_exchange}")
+                 return False
+
+            other_ob = await other_client.get_orderbook_ticker(opp.symbol)
+            if not other_ob:
+                self.logger.debug(f"{opp.symbol}: No {opp.other_exchange} orderbook")
+                return False
+            other_bid, other_ask = other_ob
+
+            # 3. Check Internal Spread (Liquidity Health)
+            # If internal spread > 5%, market is too illiquid/broken
+            mexc_spread = (mexc_ask - mexc_bid) / mexc_bid * 100
+            other_spread = (other_ask - other_bid) / other_bid * 100
+            
+            if mexc_spread > 5.0 or other_spread > 5.0:
+                self.logger.debug(f"{opp.symbol}: Illiquid (Internal Spreads: {mexc_spread:.1f}% / {other_spread:.1f}%)")
+                return False
+
+            # 4. Calculate Real Arbitrage Spread (Bid vs Ask)
+            # If Signal is MEXC_LONG -> Buy MEXC (Ask), Sell Other (Bid)
+            if opp.signal == "MEXC_LONG":
+                entry_price = mexc_ask
+                exit_price = other_bid
+                if entry_price >= exit_price:
+                    # No profit
+                     self.logger.debug(f"{opp.symbol}: No real profit (Buy {entry_price} >= Sell {exit_price})")
+                     return False
+                
+                real_spread = (exit_price - entry_price) / entry_price * 100
+                
+            else: # MEXC_SHORT -> Sell MEXC (Bid), Buy Other (Ask)
+                entry_price = other_ask
+                exit_price = mexc_bid
+                if entry_price >= exit_price:
+                      self.logger.debug(f"{opp.symbol}: No real profit (Buy {entry_price} >= Sell {exit_price})")
+                      return False
+
+                real_spread = (exit_price - entry_price) / entry_price * 100
+
+            # Update opportunity with REAL spread
+            old_spread = opp.spread_percent
+            opp.spread_percent = real_spread
+            opp.mexc_price = mexc_ask if opp.signal == "MEXC_LONG" else mexc_bid
+            opp.other_price = other_bid if opp.signal == "MEXC_LONG" else other_ask
+            
+            # Check if still profitable
+            if real_spread < self.config['spread']['min_threshold']:
+                self.logger.debug(f"{opp.symbol}: Spread dropped {old_spread:.1f}% -> {real_spread:.1f}% after OB check")
+                return False
+                
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Validation error {opp.symbol}: {e}")
+            return False
+
     async def scan_and_send(self):
         """Scan and send signals with funding filter."""
         self.scan_count += 1
@@ -142,7 +221,12 @@ class SpreadMonitor:
             
             # Process each opportunity
             for opp in opps:
-                # Check funding rate FIRST
+                # 0. Validate with Order Book (Quality Check)
+                is_valid = await self.validate_opportunity(opp)
+                if not is_valid:
+                    continue
+
+                # 1. Check funding rate
                 funding_ok, funding_reason = self.funding.is_funding_ok(
                     opp.symbol, opp.signal, opp.other_exchange
                 )
@@ -152,7 +236,7 @@ class SpreadMonitor:
                     self.logger.info(f"REJECTED {opp.symbol}: {funding_reason}")
                     continue
                 
-                # Check cooldown
+                # 2. Check cooldown
                 should, reason = self.signals.should_notify(opp)
                 
                 if should:
@@ -177,7 +261,9 @@ class SpreadMonitor:
                     
         except Exception as e:
             self.logger.error(f"Error: {e}")
-    
+            import traceback
+            traceback.print_exc()
+
     async def cleanup(self):
         await self.mexc.close_session()
         await self.binance.close_session()
@@ -188,7 +274,7 @@ class SpreadMonitor:
     def _banner(self):
         print(f"""
 {Fore.GREEN}=============================================
-  SPREAD MONITOR v3.2 + FUNDING RATE FILTER
+  SPREAD MONITOR v3.3 + DYNAMIC VALIDATION
 ============================================={Style.RESET_ALL}
 """)
     

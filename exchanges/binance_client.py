@@ -64,3 +64,20 @@ class BinanceClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        url = f"{self.BASE_URL}/ticker/bookTicker"
+        data = await self._get(url, params={"symbol": symbol})
+        
+        if data and "bidPrice" in data and "askPrice" in data:
+            try:
+                best_bid = float(data["bidPrice"])
+                best_ask = float(data["askPrice"])
+                
+                if best_bid > 0 and best_ask > 0:
+                    return best_bid, best_ask
+            except ValueError:
+                pass
+        
+        return None

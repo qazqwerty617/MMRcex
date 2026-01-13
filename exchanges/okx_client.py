@@ -60,3 +60,27 @@ class OKXClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        # OKX format: BTC-USDT-SWAP
+        okx_symbol = symbol.replace("USDT", "-USDT-SWAP")
+        
+        url = f"{self.BASE_URL}/market/books"
+        params = {"instId": okx_symbol, "sz": 1}
+        data = await self._get(url, params=params)
+        
+        if data and "data" in data and len(data["data"]) > 0:
+            try:
+                book = data["data"][0]
+                bids = book.get("bids", [])
+                asks = book.get("asks", [])
+                
+                if bids and asks:
+                    best_bid = float(bids[0][0])
+                    best_ask = float(asks[0][0])
+                    return best_bid, best_ask
+            except (ValueError, IndexError, KeyError):
+                pass
+        
+        return None

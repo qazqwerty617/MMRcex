@@ -4,12 +4,13 @@ from dataclasses import dataclass
 import logging
 
 
-# Черный список - проблемные токены
+# Черный список - проблемные токены (делистинг, старые контракты)
+# Оставляем пустым, так как теперь есть динамическая проверка стакана
 BLACKLIST = {
-    "STRAXUSDT", "IDEXUSDT", "DGBUSDT", "SNTUSDT", "XCNUSDT",
-    "VOXELUSDT", "FISUSDT", "TOKENUSDT", "OBOLUSDT", "REIUSDT",
-    "SKATEUSDT", "MEGAUSDT", "MILKUSDT", "PONKEUSDT", "ORBSUSDT",
 }
+
+# Максимально допустимый спред (все что выше - ошибка данных)
+MAX_SPREAD_PERCENT = 40.0
 
 
 @dataclass
@@ -105,6 +106,11 @@ class SpreadDetector:
                 
                 # Calculate spread
                 spread = abs(mexc_price - other_price) / min(mexc_price, other_price) * 100
+                
+                # Filter abnormal spreads (data errors)
+                if spread > MAX_SPREAD_PERCENT:
+                    self.logger.debug(f"Ignored abnormal spread {symbol}: {spread:.1f}%")
+                    continue
                 
                 if spread < self.min_spread:
                     continue

@@ -55,3 +55,25 @@ class BybitClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        url = f"{self.BASE_URL}/market/orderbook"
+        # category=linear for USDT perp
+        params = {"category": "linear", "symbol": symbol, "limit": 1}
+        data = await self._get(url, params=params)
+        
+        if data and "result" in data and "b" in data["result"] and "a" in data["result"]:
+            try:
+                # b = bids [[price, size], ...], a = asks
+                bids = data["result"].get("b", [])
+                asks = data["result"].get("a", [])
+                
+                if bids and asks:
+                    best_bid = float(bids[0][0])
+                    best_ask = float(asks[0][0])
+                    return best_bid, best_ask
+            except (ValueError, IndexError, KeyError):
+                pass
+        
+        return None

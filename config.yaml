@@ -2,8 +2,8 @@
 
 telegram:
   bot_token: "8237716329:AAFRfIsxIpPAFTqWzDu66Pw4kFcyFINkGms"
-  chat_id: "-1003240346405"  # ID канала
-  message_thread_id: 45      # ID топика/темы
+  chat_id: "-1003582014728"  # ID канала
+  message_thread_id: 7      # ID топика/темы (7 из ссылки)
 
 spread:
   min_threshold: 8.0           # Минимальный спред (%)

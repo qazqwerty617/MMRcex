@@ -97,3 +97,29 @@ class KuCoinClient(BaseExchange):
         """Get list of all available symbols."""
         tickers = await self.get_all_tickers()
         return list(tickers.keys())
+
+    async def get_orderbook_ticker(self, symbol: str) -> Optional[Tuple[float, float]]:
+        """Get best bid and ask for validation."""
+        # KuCoin format: XBTUSDTM
+        kucoin_symbol = symbol
+        if symbol.startswith("BTC"):
+            kucoin_symbol = "XBT" + symbol[3:]
+        if not kucoin_symbol.endswith("M"):
+            kucoin_symbol += "M"
+            
+        url = f"{self.BASE_URL}/level1/depth"
+        params = {"symbol": kucoin_symbol}
+        data = await self._get(url, params=params)
+        
+        if data and "data" in data:
+            try:
+                d = data["data"]
+                best_bid = float(d.get("bestBidPrice", 0))
+                best_ask = float(d.get("bestAskPrice", 0))
+                
+                if best_bid > 0 and best_ask > 0:
+                    return best_bid, best_ask
+            except (ValueError, KeyError):
+                pass
+        
+        return None
