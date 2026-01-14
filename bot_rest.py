@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import yaml
+import json
 from datetime import datetime
 from typing import Dict, Tuple
 from colorama import Fore, Style, init as colorama_init
@@ -69,6 +70,49 @@ class SpreadMonitor:
         self.scan_count = 0
         self.alerts_sent = 0
         self.funding_rejected = 0
+        
+        self.blacklist = self._load_blacklist()
+        self.last_update_id = 0
+    
+    def _load_blacklist(self) -> list:
+        try:
+            with open("blacklist.json", "r") as f:
+                return json.load(f)
+        except:
+            return []
+
+    def _save_blacklist(self):
+        with open("blacklist.json", "w") as f:
+            json.dump(self.blacklist, f)
+
+    async def process_commands(self):
+        """Check for telegram commands."""
+        updates = self.telegram.get_updates(offset=self.last_update_id + 1)
+        for u in updates:
+            self.last_update_id = u["update_id"]
+            if "message" not in u:
+                continue
+            msg = u["message"]
+            text = msg.get("text", "")
+            chat_id = msg.get("chat", {}).get("id")
+            
+            if text.startswith("/blacklist"):
+                parts = text.split()
+                if len(parts) > 1:
+                    symbol = parts[1].upper()
+                    # Handle common formats like BTC/USDT or BTC_USDT
+                    if "_" not in symbol and "/" not in symbol:
+                        symbol = f"{symbol}/USDT" # Default assumption
+                    
+                    if symbol not in self.blacklist:
+                        self.blacklist.append(symbol)
+                        self._save_blacklist()
+                        self.telegram.send_message(f"Added {symbol} to blacklist.", chat_id=chat_id)
+                        self.logger.info(f"Blacklisted: {symbol}")
+                    else:
+                        self.telegram.send_message(f"{symbol} is already blacklisted.", chat_id=chat_id)
+                else:
+                    self.telegram.send_message("Usage: /blacklist SYMBOL", chat_id=chat_id)
     
     def _setup_logging(self):
         logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -225,6 +269,9 @@ class SpreadMonitor:
             
             # Process each opportunity
             for opp in opps:
+                if opp.symbol in self.blacklist:
+                    continue
+                
                 # 0. Validate with Order Book (Quality Check)
                 is_valid = await self.validate_opportunity(opp)
                 if not is_valid:
@@ -301,6 +348,8 @@ class SpreadMonitor:
         try:
             while self.running:
                 start = datetime.now()
+                
+                await self.process_commands()
                 await self.scan_and_send()
                 
                 if self.scan_count % 30 == 0:

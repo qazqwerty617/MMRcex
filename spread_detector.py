@@ -68,6 +68,8 @@ class SpreadDetector:
             score += 25
         elif spread >= 10:
             score += 15
+        elif spread >= 8:
+            score += 10
         
         # Bonus
         if min_vol >= 2_000_000 and spread >= 15:
@@ -117,8 +119,8 @@ class SpreadDetector:
                 
                 quality = self.calculate_quality(spread, min_vol)
                 
-                # Strict: require quality 30+
-                if quality < 30:
+                # Strict: require quality 20+ (adjusted for 8% spread)
+                if quality < 20:
                     continue
                 
                 signal = "MEXC_LONG" if other_price > mexc_price else "MEXC_SHORT"
